@@ -14,6 +14,11 @@ const state = {
   currentNodeId: null,
   history: [],
   result: null,
+  referral: {
+    toothNumber: "",
+    doctorName: "",
+    isOpen: false,
+  },
   uiLocked: false,
 };
 
@@ -24,6 +29,7 @@ const TRANSITION_IN_MS = 260;
 document.addEventListener("DOMContentLoaded", () => {
   bindRefs();
   setBirthDateBounds();
+  loadStoredSettings();
   applyTheme(localStorage.getItem("cbct-theme") || "light");
   bindEvents();
   render();
@@ -64,9 +70,21 @@ function bindRefs() {
   refs.copyReport = document.getElementById("copy-report");
   refs.downloadReport = document.getElementById("download-report");
   refs.emailReport = document.getElementById("email-report");
+  refs.openReferral = document.getElementById("open-referral");
   refs.printReport = document.getElementById("print-report");
   refs.backButton = document.getElementById("back-button");
   refs.restartButton = document.getElementById("restart-button");
+  refs.referralBackdrop = document.getElementById("referral-sheet-backdrop");
+  refs.referralSheet = document.getElementById("referral-sheet");
+  refs.referralTitle = document.getElementById("referral-sheet-title");
+  refs.referralToothNumber = document.getElementById("referral-tooth-number");
+  refs.referralDoctorName = document.getElementById("referral-doctor-name");
+  refs.referralSummary = document.getElementById("referral-summary");
+  refs.referralError = document.getElementById("referral-error");
+  refs.copyReferral = document.getElementById("copy-referral");
+  refs.downloadReferral = document.getElementById("download-referral");
+  refs.emailReferral = document.getElementById("email-referral");
+  refs.closeReferral = document.getElementById("close-referral");
   refs.screens = {
     identity: document.getElementById("screen-identity"),
     selection: document.getElementById("screen-selection"),
@@ -86,9 +104,22 @@ function bindEvents() {
   refs.copyReport.addEventListener("click", copyReportToClipboard);
   refs.downloadReport.addEventListener("click", downloadReport);
   refs.emailReport.addEventListener("click", prepareEmail);
+  refs.openReferral.addEventListener("click", toggleReferralSheet);
   refs.printReport.addEventListener("click", () => window.print());
   refs.backButton.addEventListener("click", handleBack);
   refs.restartButton.addEventListener("click", restartFlow);
+  refs.referralToothNumber.addEventListener("input", onReferralFieldInput);
+  refs.referralDoctorName.addEventListener("input", onReferralFieldInput);
+  refs.copyReferral.addEventListener("click", copyReferralToClipboard);
+  refs.downloadReferral.addEventListener("click", downloadReferral);
+  refs.emailReferral.addEventListener("click", prepareReferralEmail);
+  refs.closeReferral.addEventListener("click", closeReferralSheet);
+  refs.referralBackdrop.addEventListener("click", onReferralBackdropClick);
+  document.addEventListener("keydown", onDocumentKeyDown);
+}
+
+function loadStoredSettings() {
+  state.referral.doctorName = localStorage.getItem("cbct-referral-doctor-name") || "";
 }
 
 function toggleTheme() {
@@ -191,6 +222,7 @@ function render() {
   renderQuestionScreen();
   renderResultScreen();
   renderFooter();
+  renderReferralSheet();
   renderActiveScreen();
 }
 
@@ -219,8 +251,11 @@ function resetFlowState({ clearPatient = false } = {}) {
   state.currentNodeId = null;
   state.history = [];
   state.result = null;
+  state.referral.toothNumber = "";
+  state.referral.isOpen = false;
   refs.patientError.textContent = "";
   refs.birthDate.setCustomValidity("");
+  refs.referralError.textContent = "";
 }
 
 function setBirthDateBounds() {
@@ -346,6 +381,30 @@ function renderResultScreen() {
     : `<div class="answer-pill neutral"><span>Info</span><strong>Décision directe</strong></div>`;
 }
 
+function renderReferralSheet() {
+  if (getCurrentScreen() !== "result") {
+    state.referral.isOpen = false;
+  }
+
+  refs.referralToothNumber.value = state.referral.toothNumber;
+  refs.referralDoctorName.value = state.referral.doctorName;
+
+  const isOpen = Boolean(state.result && state.referral.isOpen);
+  const isReady = isReferralReady();
+  const summary = buildReferralSummary();
+
+  refs.referralBackdrop.classList.toggle("hidden", !isOpen);
+  refs.referralBackdrop.setAttribute("aria-hidden", String(!isOpen));
+  refs.openReferral.textContent = isOpen ? "Masquer le courrier" : "Courrier d’adressage";
+  refs.openReferral.setAttribute("aria-expanded", String(isOpen));
+  refs.copyReferral.disabled = !isReady;
+  refs.downloadReferral.disabled = !isReady;
+  refs.emailReferral.disabled = !isReady;
+  refs.referralSummary.innerHTML = summary
+    ? `<strong>${escapeHtml(summary.title)}</strong><span>${escapeHtml(summary.body)}</span>`
+    : "";
+}
+
 function renderFooter() {
   const currentScreen = getCurrentScreen();
   const showBack = currentScreen !== "identity";
@@ -455,6 +514,7 @@ function answerQuestion(answer) {
         nodeId: state.currentNodeId,
         label: node.label,
         answer,
+        reason: branch.reason || "",
       });
 
       if (branch.type === "outcome") {
@@ -724,6 +784,205 @@ function buildReportText() {
   ];
 
   return lines.join("\n");
+}
+
+function toggleReferralSheet() {
+  if (!state.result || state.uiLocked) {
+    return;
+  }
+
+  state.referral.isOpen = !state.referral.isOpen;
+  refs.referralError.textContent = "";
+  renderReferralSheet();
+
+  if (state.referral.isOpen) {
+    focusReferralSheet();
+    announce("Le formulaire de courrier d’adressage est ouvert.");
+    return;
+  }
+
+  refs.openReferral.focus({ preventScroll: true });
+  announce("Le formulaire de courrier d’adressage est fermé.");
+}
+
+function closeReferralSheet() {
+  if (!state.referral.isOpen) {
+    return;
+  }
+
+  state.referral.isOpen = false;
+  refs.referralError.textContent = "";
+  renderReferralSheet();
+  refs.openReferral.focus({ preventScroll: true });
+}
+
+function onReferralBackdropClick(event) {
+  if (event.target === refs.referralBackdrop) {
+    closeReferralSheet();
+  }
+}
+
+function onDocumentKeyDown(event) {
+  if (event.key === "Escape" && state.referral.isOpen) {
+    closeReferralSheet();
+  }
+}
+
+function onReferralFieldInput(event) {
+  if (event.target === refs.referralToothNumber) {
+    state.referral.toothNumber = event.target.value.trim();
+  }
+
+  if (event.target === refs.referralDoctorName) {
+    state.referral.doctorName = event.target.value.trim();
+    localStorage.setItem("cbct-referral-doctor-name", state.referral.doctorName);
+  }
+
+  refs.referralError.textContent = "";
+  renderReferralSheet();
+}
+
+function focusReferralSheet() {
+  window.requestAnimationFrame(() => {
+    const target = state.referral.toothNumber ? refs.referralDoctorName : refs.referralToothNumber;
+    target.focus({ preventScroll: true });
+  });
+}
+
+function isReferralReady() {
+  return Boolean(state.referral.toothNumber.trim() && state.referral.doctorName.trim());
+}
+
+function ensureReferralReady() {
+  if (isReferralReady()) {
+    refs.referralError.textContent = "";
+    return true;
+  }
+
+  refs.referralError.textContent =
+    "Renseignez le numéro de dent et le nom du praticien pour générer le courrier.";
+
+  if (!state.referral.toothNumber.trim()) {
+    refs.referralToothNumber.focus({ preventScroll: true });
+  } else {
+    refs.referralDoctorName.focus({ preventScroll: true });
+  }
+
+  return false;
+}
+
+function copyReferralToClipboard() {
+  if (!ensureReferralReady()) {
+    return;
+  }
+
+  navigator.clipboard.writeText(buildReferralText()).then(
+    () => announce("Le courrier d’adressage a été copié."),
+    () => window.alert("Impossible de copier automatiquement le courrier."),
+  );
+}
+
+function downloadReferral() {
+  if (!ensureReferralReady()) {
+    return;
+  }
+
+  const blob = new Blob([buildReferralText()], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = buildReferralFileName();
+  link.click();
+  URL.revokeObjectURL(url);
+  announce("Le courrier d’adressage a été téléchargé.");
+}
+
+function prepareReferralEmail() {
+  if (!ensureReferralReady()) {
+    return;
+  }
+
+  const subject = encodeURIComponent(`Courrier d’adressage - ${state.patient.firstName} ${state.patient.lastName}`);
+  const body = encodeURIComponent(buildReferralText());
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function buildReferralSummary() {
+  if (!state.result) {
+    return null;
+  }
+
+  const tooth = state.referral.toothNumber.trim() || "à préciser";
+  const title = `${getTreatmentLabel()} · dent n°${tooth}`;
+  const body = state.result.reason;
+  return { title, body };
+}
+
+function buildReferralText() {
+  const patientName = `${state.patient.firstName} ${state.patient.lastName}`.trim();
+  const treatmentLabel = getTreatmentLabel();
+  const findings = getReferralFindings();
+  const decisionLine =
+    state.result && state.result.decision === "cbct"
+      ? "Dans ce contexte, un CBCT paraît indiqué selon l’arbre décisionnel utilisé."
+      : "Dans ce contexte, le parcours ne retient pas d’indication forte de CBCT selon l’arbre décisionnel utilisé.";
+
+  const lines = [
+    "Courrier d’adressage",
+    "",
+    "Cher confrère, chère consœur,",
+    "",
+    `Je vous adresse Madame / Monsieur ${patientName}, né(e) le ${formatDate(state.patient.birthDate)}, pour ${treatmentLabel} de la dent n°${state.referral.toothNumber.trim()}.`,
+    `Le parcours suivi concerne ${getJourneyLabel().toLowerCase()}.`,
+    findings,
+    decisionLine,
+    "",
+    "Je vous remercie par avance de ce que vous pourrez faire pour ce patient.",
+    "",
+    "Confraternellement,",
+    formatDoctorSignature(state.referral.doctorName),
+  ];
+
+  return lines.join("\n");
+}
+
+function getTreatmentLabel() {
+  return state.selection.treatmentType === "retreatment"
+    ? "un retraitement endodontique"
+    : "un traitement endodontique";
+}
+
+function getReferralFindings() {
+  const positiveFindings = state.history
+    .filter((entry) => entry.answer === "yes")
+    .map((entry) => cleanSentence(entry.reason || entry.label));
+
+  if (positiveFindings.length) {
+    return `Les éléments relevés au cours du parcours sont les suivants : ${positiveFindings.join(" ; ")}.`;
+  }
+
+  return `Le principal élément retenu par le parcours est le suivant : ${cleanSentence(state.result ? state.result.reason : "")}.`;
+}
+
+function formatDoctorSignature(value) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "Dr XXXXX";
+  }
+
+  return /^dr\b/i.test(trimmed) ? trimmed : `Dr ${trimmed}`;
+}
+
+function cleanSentence(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").replace(/[.;:,!?]+$/g, "");
+}
+
+function buildReferralFileName() {
+  const safeName = `${state.patient.firstName}-${state.patient.lastName}`
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-");
+  const safeTooth = state.referral.toothNumber.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+  return `courrier-adressage-${safeName || "patient"}-${safeTooth || "dent"}.txt`;
 }
 
 function buildFileName() {

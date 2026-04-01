@@ -595,6 +595,79 @@ html[data-theme="light"] .theme-icon-moon {
   flex: 1 1 140px;
 }
 
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  padding: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 24, 41, 0.34);
+  backdrop-filter: blur(10px);
+}
+
+.sheet-card {
+  width: min(100%, 560px);
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.sheet-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.sheet-heading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 4vw, 1.75rem);
+  line-height: 1.04;
+}
+
+.sheet-field-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.sheet-preview {
+  min-height: 72px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+}
+
+.sheet-preview strong,
+.sheet-preview span {
+  overflow-wrap: anywhere;
+}
+
+.sheet-preview strong {
+  font-size: 0.94rem;
+}
+
+.sheet-preview span {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sheet-actions > * {
+  flex: 1 1 180px;
+}
+
 .app-footer {
   width: min(calc(100% - 20px), 360px);
   padding: 5px;
@@ -736,6 +809,30 @@ html[data-theme="light"] .theme-icon-moon {
     min-height: 58px;
   }
 
+  .sheet-backdrop {
+    padding: 10px;
+  }
+
+  .sheet-card {
+    width: min(100%, 420px);
+    padding: 14px;
+    gap: 10px;
+    border-radius: 20px;
+  }
+
+  .sheet-preview {
+    min-height: 64px;
+    padding: 10px 12px;
+  }
+
+  .sheet-actions {
+    gap: 6px;
+  }
+
+  .sheet-actions > * {
+    flex-basis: calc(50% - 3px);
+  }
+
   .app-shell[data-screen="question"] .app-footer,
   .app-shell[data-screen="result"] .app-footer,
   .app-shell[data-screen="selection"] .app-footer {
@@ -765,6 +862,10 @@ html[data-theme="light"] .theme-icon-moon {
 }
 
 @media (min-width: 640px) {
+  .sheet-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .option-grid,
   .option-grid-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -866,6 +967,7 @@ html[data-theme="light"] .theme-icon-moon {
   .topbar,
   .app-chrome,
   .app-footer,
+  .sheet-backdrop,
   .theme-toggle,
   .result-actions {
     display: none !important;
