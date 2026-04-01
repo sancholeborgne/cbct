@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Orientation CBCT</title>
+    <meta
+      name="description"
+      content="Parcours guidé pour déterminer simplement si un CBCT est indiqué."
+    >
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="sr-only" id="live-region" aria-live="polite" aria-atomic="true"></div>
+
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Cabinet dentaire</p>
+          <h1>Orientation CBCT</h1>
+          <p class="brand-copy">
+            Un parcours simple, étape par étape, pour savoir si un CBCT est nécessaire.
+          </p>
+        </div>
+
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Activer le mode sombre">
+          <span class="sr-only" id="theme-toggle-label">Mode sombre</span>
+          <svg
+            class="theme-icon theme-icon-moon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M20.4 14.5a8.5 8.5 0 0 1-10.9-10.9A9 9 0 1 0 20.4 14.5Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.8"
+            />
+          </svg>
+          <svg
+            class="theme-icon theme-icon-sun"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8" />
+            <path
+              d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.8"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <section class="app-chrome" aria-label="Progression">
+        <div class="stepper">
+          <div class="step-pill" data-step="1">
+            <span class="step-number">1</span>
+            <span class="step-text">Identité</span>
+          </div>
+          <div class="step-pill" data-step="2">
+            <span class="step-number">2</span>
+            <span class="step-text">Parcours</span>
+          </div>
+          <div class="step-pill" data-step="3">
+            <span class="step-number">3</span>
+            <span class="step-text">Questions</span>
+          </div>
+          <div class="step-pill" data-step="4">
+            <span class="step-number">4</span>
+            <span class="step-text">Conclusion</span>
+          </div>
+        </div>
+
+        <div class="context-strip">
+          <article class="context-card">
+            <span class="context-label">Patient</span>
+            <p class="context-value" id="patient-summary">Non renseigné</p>
+          </article>
+
+          <article class="context-card">
+            <span class="context-label">Parcours</span>
+            <p class="context-value" id="journey-summary">En attente</p>
+          </article>
+        </div>
+      </section>
+
+      <main class="screen-stack">
+        <section class="screen" id="screen-identity" aria-labelledby="identity-title">
+          <article class="screen-card">
+            <div class="screen-heading">
+              <p class="screen-step">Étape 1</p>
+              <h2 id="identity-title" tabindex="-1">Renseigner le patient</h2>
+              <p class="screen-copy">
+                Indiquez les informations du patient avant de démarrer le questionnaire.
+              </p>
+            </div>
+
+            <form id="patient-form" class="patient-form" novalidate>
+              <label class="field">
+                <span>Prénom</span>
+                <input id="first-name" name="firstName" type="text" autocomplete="given-name" required>
+              </label>
+
+              <label class="field">
+                <span>Nom</span>
+                <input id="last-name" name="lastName" type="text" autocomplete="family-name" required>
+              </label>
+
+              <label class="field">
+                <span>Date de naissance</span>
+                <input id="birth-date" name="birthDate" type="date" required>
+              </label>
+
+              <p class="error-text" id="patient-error" aria-live="polite"></p>
+
+              <button class="primary-button action-button" type="submit">
+                Continuer
+              </button>
+            </form>
+          </article>
+        </section>
+
+        <section class="screen" id="screen-selection" aria-labelledby="selection-title">
+          <article class="screen-card">
+            <div class="screen-heading">
+              <p class="screen-step" id="selection-step-label">Étape 2</p>
+              <h2 id="selection-title" tabindex="-1">Choisir le parcours</h2>
+              <p class="screen-copy" id="selection-body">
+                Sélectionnez la branche adaptée avant de commencer les questions.
+              </p>
+            </div>
+
+            <div class="option-grid" id="selection-stage"></div>
+          </article>
+        </section>
+
+        <section class="screen" id="screen-question" aria-labelledby="question-title">
+          <article class="screen-card question-card">
+            <div class="screen-heading">
+              <p class="screen-step" id="question-step-label">Étape 3</p>
+              <div class="question-meta">
+                <span class="question-index" id="question-index">Question 1</span>
+                <span class="question-journey" id="question-journey">Parcours</span>
+              </div>
+              <h2 id="question-title" tabindex="-1">Question</h2>
+            </div>
+
+            <div class="detail-chips" id="question-details"></div>
+
+            <div class="answer-grid" id="question-actions">
+              <button class="answer-button answer-yes" type="button" data-answer="yes" aria-label="Répondre oui">
+                Oui
+              </button>
+              <button class="answer-button answer-no" type="button" data-answer="no" aria-label="Répondre non">
+                Non
+              </button>
+            </div>
+          </article>
+        </section>
+
+        <section class="screen" id="screen-result" aria-labelledby="result-title">
+          <article class="screen-card result-card">
+            <div class="screen-heading">
+              <p class="screen-step">Étape 4</p>
+              <div class="result-badge" id="result-badge">Conclusion</div>
+              <h2 id="result-title" tabindex="-1">Décision</h2>
+              <p class="screen-copy" id="result-body">
+                Le résultat final du parcours s’affiche ici.
+              </p>
+            </div>
+
+            <div class="result-summary-grid">
+              <article class="mini-card">
+                <span class="context-label">Patient</span>
+                <p class="mini-value" id="report-patient">-</p>
+              </article>
+
+              <article class="mini-card">
+                <span class="context-label">Naissance</span>
+                <p class="mini-value" id="report-birth-date">-</p>
+              </article>
+
+              <article class="mini-card">
+                <span class="context-label">Parcours</span>
+                <p class="mini-value" id="report-journey">-</p>
+              </article>
+
+              <article class="mini-card">
+                <span class="context-label">Réponses</span>
+                <p class="mini-value" id="report-answer-count">0</p>
+              </article>
+            </div>
+
+            <div class="answer-pill-grid" id="answer-pill-grid"></div>
+
+            <div class="result-actions">
+              <button class="primary-button" type="button" id="copy-report">Copier le compte rendu</button>
+              <button class="ghost-button" type="button" id="download-report">Télécharger</button>
+              <button class="ghost-button" type="button" id="email-report">Préparer un e-mail</button>
+              <button class="ghost-button" type="button" id="print-report">Imprimer</button>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <button class="ghost-button hidden" id="back-button" type="button">Retour</button>
+        <button class="ghost-button hidden" id="restart-button" type="button">Recommencer</button>
+      </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/decision-tree.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>
